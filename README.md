@@ -9,7 +9,7 @@ import (
 func main() {
     addrs := []string{"172.16.10.222:9092", "172.16.10.223:9092", "172.16.10.224:9092"}
 
-    hook, err := kafkahook.NewHook(addrs, "game", "logrus-hook")
+    hook, err := kafkahook.NewKafkaHook(addrs, "game", "logrus-hook")
     if err != nil {
         log.Fatal(err)
     }   

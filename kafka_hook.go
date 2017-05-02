@@ -14,14 +14,14 @@ type KafkaHook struct {
 	asyncProducer sarama.AsyncProducer
 }
 
-func NewLogKafkaHook(addr []string, appName, topic string) (*KafkaHook, error) {
+func NewKafkaHook(addrs []string, appName, topic string) (*KafkaHook, error) {
 	config := sarama.NewConfig()
 	producer, err := sarama.NewAsyncProducer(addrs, config)
 	if err != nil {
 		return nil, err
 	}
 
-	return &KafkaHook{asyncProducer: producer, topic: topic}
+	return &KafkaHook{asyncProducer: producer, appName: appName, topic: topic}, nil
 }
 
 func (hook *KafkaHook) Fire(entry *logrus.Entry) error {
@@ -40,13 +40,7 @@ func (hook *KafkaHook) Fire(entry *logrus.Entry) error {
 }
 
 func (hook *KafkaHook) Levels() []logrus.Level {
-	levels := []logrus.Level{}
-	for _, level := range logrus.AllLevels {
-		if level <= hook.Level {
-			levels = append(levels, level)
-		}
-	}
-	return levels
+	return logrus.AllLevels
 }
 
 // getCaller returns the filename and the line info of a function
