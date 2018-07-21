@@ -8,10 +8,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	ASYNC_PENDING_LENGTH = 65535
+)
+
 type KafkaHook struct {
-	appName       string
-	topic         string
-	asyncProducer sarama.AsyncProducer
+	appName                      string
+	topic                        string
+	asyncProducer                sarama.AsyncProducer
+	kAsyncProducerMessagePending chan *sarama.ProducerMessage
 }
 
 func NewKafkaHook(addrs []string, appName, topic string) (*KafkaHook, error) {
@@ -21,7 +26,28 @@ func NewKafkaHook(addrs []string, appName, topic string) (*KafkaHook, error) {
 		return nil, err
 	}
 
-	return &KafkaHook{asyncProducer: producer, appName: appName, topic: topic}, nil
+	hook := &KafkaHook{asyncProducer: producer, appName: appName, topic: topic}
+	hook.init()
+	return hook, nil
+}
+
+func (hook *KafkaHook) init() {
+	hook.kAsyncProducerMessagePending = make(chan *sarama.ProducerMessage, ASYNC_PENDING_LENGTH)
+
+	go hook.asyncInput()
+}
+
+func (hook *KafkaHook) asyncInput() {
+	for {
+		select {
+		case msg, ok := <-hook.kAsyncProducerMessagePending:
+			if !ok {
+				return
+			}
+
+			hook.asyncProducer.Input() <- msg
+		}
+	}
 }
 
 func (hook *KafkaHook) Fire(entry *logrus.Entry) error {
@@ -35,7 +61,12 @@ func (hook *KafkaHook) Fire(entry *logrus.Entry) error {
 	}
 
 	msg := &sarama.ProducerMessage{Topic: hook.topic, Value: sarama.StringEncoder(strings.TrimSpace(message))}
-	hook.asyncProducer.Input() <- msg
+	select {
+	case hook.kAsyncProducerMessagePending <- msg:
+	default:
+		// TODO return err
+	}
+
 	return nil
 }
 
