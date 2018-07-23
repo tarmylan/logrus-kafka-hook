@@ -1,6 +1,7 @@
 package kafka_hook
 
 import (
+	"fmt"
 	"runtime"
 	"strings"
 
@@ -17,11 +18,17 @@ type KafkaHook struct {
 func NewKafkaHook(addrs []string, appName, topic string) (*KafkaHook, error) {
 	config := sarama.NewConfig()
 	// ignore errors
-	config.Producer.Return.Errors = false
+	//config.Producer.Return.Errors = false
 	producer, err := sarama.NewAsyncProducer(addrs, config)
 	if err != nil {
 		return nil, err
 	}
+
+	go func() {
+		for err := range producer.Errors() {
+			fmt.Println(err)
+		}
+	}()
 
 	return &KafkaHook{asyncProducer: producer, appName: appName, topic: topic}, nil
 }
