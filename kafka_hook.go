@@ -2,7 +2,6 @@ package kafka_hook
 
 import (
 	"fmt"
-	"runtime"
 	"strings"
 
 	"github.com/Shopify/sarama"
